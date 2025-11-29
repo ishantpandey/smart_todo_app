@@ -42,11 +42,7 @@ RUN chown -R appuser:appgroup /usr/share/nginx/html && \
 USER appuser
 
 # Expose port 8080 (ECS friendly)
-EXPOSE 8080
-
-# Health check for ECS
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+EXPOSE 80
 
 # Start NGINX
 CMD ["nginx", "-g", "daemon off;"]
