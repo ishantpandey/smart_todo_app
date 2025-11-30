@@ -9,40 +9,38 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2: NGINX to serve static build files
+
+# Stage 2: NGINX to serve static files
 FROM nginx:alpine
 
 # Install wget for health checks
 RUN apk add --no-cache wget
 
-# Remove default nginx config
+# Nginx uses /var/run/nginx by default (not /run/nginx)
+RUN mkdir -p /var/cache/nginx /var/run/nginx
+
+# Remove default config
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy build output
+# Copy build output from Stage 1
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -S appuser -u 1001 -G appgroup
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Set proper permissions
-RUN chown -R appuser:appgroup /usr/share/nginx/html && \
-    chown -R appuser:appgroup /var/cache/nginx && \
-    chown -R appuser:appgroup /var/log/nginx && \
-    chown -R appuser:appgroup /etc/nginx/conf.d && \
-    mkdir -p /var/run/nginx && \
-    chown -R appuser:appgroup /var/run/nginx && \
-    touch /var/run/nginx/nginx.pid && \
-    chown appuser:appgroup /var/run/nginx/nginx.pid
+# Fix permissions
+RUN chown -R appuser:appgroup \
+    /usr/share/nginx/html \
+    /var/cache/nginx \
+    /var/run/nginx \
+    /etc/nginx/conf.d
 
 # Switch to non-root user
 USER appuser
 
-# Expose port 8080 (ECS friendly)
 EXPOSE 80
 
-# Start NGINX
 CMD ["nginx", "-g", "daemon off;"]
